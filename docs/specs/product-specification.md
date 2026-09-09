@@ -637,8 +637,8 @@ Estos elementos proceden del enunciado, pero no son requisitos funcionales del p
 - Aislamiento del motor de descuentos respecto de controladores y persistencia.
 - Cobertura minima del 80% en las capas logicas esenciales de frontend y backend.
 - Pruebas de casos de borde.
-- Archivo `docs/arquitectura.md`.
-- Archivo `docs/ia.md`.
+- Archivo `docs/architecture.md`.
+- Archivo `docs/ai-usage.md`.
 - `README.md` con instalacion, configuracion y comandos de pruebas.
 - Historial de commits descriptivo e incremental.
 - Sustentacion de 20 minutos.

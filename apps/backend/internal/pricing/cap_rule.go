@@ -8,7 +8,7 @@ const CapRuleCode = "MAXIMUM_DISCOUNT_35_PERCENT"
 // exceed a configured percentage of the original subtotal. With the
 // production percentages (10/5/15) the maximum reachable discount is
 // 27.325%, so this rule can never trigger in production data — see
-// DR-01 in docs/specs/especificacion_producto.md. It is still implemented
+// DR-01 in docs/specs/product-specification.md. It is still implemented
 // and unit tested against a configurable percentage so the behaviour is
 // verifiable without silently changing production rules.
 type CapRule struct {

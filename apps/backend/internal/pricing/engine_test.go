@@ -141,7 +141,7 @@ func TestEngine_PA06PA07_RejectedCouponYieldsZeroCouponDiscount(t *testing.T) {
 	}
 }
 
-// PA-08: the reference example from especificacion_producto.md — a single
+// PA-08: the reference example from product-specification.md — a single
 // USD 120.00 technology product with WELCOME2026 applied.
 func TestEngine_PA08_ReferenceExampleFromSpec(t *testing.T) {
 	items := []domain.PricedItem{priced("tech-001", domain.CategoryTechnology, 12000, 1)}
@@ -168,7 +168,7 @@ func TestEngine_PA08_ReferenceExampleFromSpec(t *testing.T) {
 	}
 }
 
-// Invariants that must hold for every valid cart, per especificacion_backend.md #7.2.
+// Invariants that must hold for every valid cart, per backend-specification.md #7.2.
 func TestEngine_Invariants_MonotonicAndBounded(t *testing.T) {
 	items := []domain.PricedItem{priced("tech-001", domain.CategoryTechnology, 12000, 1)}
 	breakdown := NewEngine().Calculate(items, appliedCoupon())
