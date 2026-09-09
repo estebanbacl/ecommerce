@@ -38,7 +38,8 @@ describe('CartSummary', () => {
     await userEvent.click(screen.getByRole('button', { name: 'seed-add' }))
 
     expect(screen.getByText('Teclado')).toBeInTheDocument()
-    expect(screen.getByText(/Subtotal provisional/).textContent).toMatch(/10[,.]00/)
+    const subtotalLabel = screen.getByText(/Subtotal provisional/)
+    expect(subtotalLabel.parentElement?.textContent).toMatch(/10[,.]00/)
   })
 
   it('removes the line via the delete action', async () => {

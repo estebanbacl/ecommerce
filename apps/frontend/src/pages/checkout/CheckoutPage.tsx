@@ -13,17 +13,27 @@ export function CheckoutPage() {
   const canCheckout = selectCanCheckout(cartState)
 
   return (
-    <main>
-      <h1>Core E-Commerce Checkout</h1>
-      <div>
-        <section aria-label="Catálogo">
-          <h2>Catálogo</h2>
-          <ProductList state={productsState} onRetry={reload} />
-        </section>
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <header className="mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Core E-Commerce Checkout</h1>
+        <p className="mt-1 text-sm text-neutral-500">
+          Descuentos acumulados por categoría, volumen y cupón, calculados por el backend.
+        </p>
+      </header>
 
-        <CartSummary products={products} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+        <div className="space-y-6 lg:col-span-2">
+          <section aria-label="Catálogo">
+            <h2 className="mb-3 text-lg font-semibold text-neutral-900">Catálogo</h2>
+            <ProductList state={productsState} onRetry={reload} />
+          </section>
 
-        <CheckoutPanel items={items} canCheckout={canCheckout} onOrderConfirmed={reload} />
+          <CartSummary products={products} />
+        </div>
+
+        <div className="lg:sticky lg:top-8">
+          <CheckoutPanel items={items} canCheckout={canCheckout} onOrderConfirmed={reload} />
+        </div>
       </div>
     </main>
   )

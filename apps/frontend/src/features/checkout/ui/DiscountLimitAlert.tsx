@@ -5,5 +5,13 @@ export function DiscountLimitAlert({ visible }: { visible: boolean }) {
     return null
   }
 
-  return <div role="status">{LIMIT_MESSAGE}</div>
+  return (
+    <div
+      role="status"
+      className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-800"
+    >
+      <span aria-hidden="true">🎉</span>
+      <span>{LIMIT_MESSAGE}</span>
+    </div>
+  )
 }
