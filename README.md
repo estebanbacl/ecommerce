@@ -1,5 +1,16 @@
 # Core E-Commerce Checkout
 
+[![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white)](apps/backend)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](apps/frontend)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](apps/frontend)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](apps/frontend)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](apps/frontend)
+[![Vitest](https://img.shields.io/badge/Vitest-tested-6E9F18?logo=vitest&logoColor=white)](apps/frontend)
+[![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![Prometheus](https://img.shields.io/badge/Prometheus-metrics-E6522C?logo=prometheus&logoColor=white)](infra/prometheus)
+[![Grafana](https://img.shields.io/badge/Grafana-dashboards-F46800?logo=grafana&logoColor=white)](infra/grafana)
+[![GitHub Actions](https://github.com/estebanbacl/ecommerce/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/estebanbacl/ecommerce/actions/workflows/ci.yml)
+
 MVP de checkout para e-commerce con descuentos acumulativos (categoría, volumen y cupón), límite de ahorro consolidado, validación/decremento de stock y persistencia de la orden. El backend en Go es la única fuente de verdad para precios, stock, cupones y totales; el frontend en React gestiona la intención de compra y presenta el desglose que el backend calcula.
 
 ## Tecnologías
@@ -26,6 +37,86 @@ MVP de checkout para e-commerce con descuentos acumulativos (categoría, volumen
 - [Prometheus](https://prometheus.io/) — scraping de métricas cada 5s
 - [Grafana](https://grafana.com/) — dashboards, con datasource y dashboard auto-provisionados
 - [Docker Compose](https://docs.docker.com/compose/) — orquestación local de los tres servicios
+
+## Evidencia de verificación
+
+Todo lo listado abajo se ejecutó en vivo el 2026-09-09 sobre el `HEAD` actual de `develop`, con los mismos comandos que corre el pipeline de CI (no son afirmaciones sin comprobar).
+
+### 1. Frontend — build, pruebas y cobertura
+
+```text
+$ npm run test:coverage
+Test Files  9 passed (9)
+     Tests  39 passed (39)
+
+Statements   : 90.98% ( 111/122 )
+Branches     : 81.94% ( 59/72 )
+Functions    : 88.67% ( 47/53 )
+Lines        : 90.75% ( 108/119 )
+
+$ npm run build
+✓ 137 modules transformed
+✓ built in 93ms
+```
+
+Las 4 métricas superan el umbral del 80% configurado en `vite.config.ts`. El estilo (paleta violeta/stone/emerald, tarjetas `rounded-2xl`, set de íconos propio) se aplicó a los 8 componentes del checkout sin romper ningún `aria-label`/texto verificado por las pruebas existentes — confirmado por los mismos 39 tests en verde.
+
+### 2. Backend — build, pruebas y cobertura
+
+```text
+$ go test -race ./...
+ok  cmd/server
+ok  internal/adapters/handlers
+ok  internal/adapters/observability
+ok  internal/adapters/platform
+ok  internal/adapters/repositories
+ok  internal/application
+ok  internal/core/domain
+ok  internal/core/ports
+ok  internal/pricing
+(9/9 paquetes, 58 pruebas, sin condiciones de carrera)
+
+$ go build -o server ./cmd/server
+# compila sin errores
+```
+
+Cobertura de la lógica de negocio central (`pricing`, `application`, `core`, `adapters/{repositories,handlers,observability}`, excluyendo el composition root no testeable de `cmd/server`): **85.8%**, sobre el umbral del 80% que exige `.github/workflows/ci.yml`.
+
+### 3. Observabilidad — Prometheus + Grafana, tráfico real de extremo a extremo
+
+Stack levantado con `docker-compose up --build -d` y verificado con tráfico real contra el contenedor (no simulado):
+
+```text
+$ curl -X POST http://localhost:8080/api/checkout -d '{"items":[{"productId":"tech-001","quantity":1}],"couponCode":"WELCOME2026"}'
+→ 200 OK, finalTotal=8721 (coincide con el ejemplo de referencia de la especificación)
+
+$ curl -X POST http://localhost:8080/api/checkout -d '{"items":[{"productId":"book-001","quantity":100}]}'
+→ 409 INSUFFICIENT_STOCK
+
+$ curl http://localhost:9090/api/v1/targets
+→ job=backend health=up
+
+$ curl 'http://localhost:9090/api/v1/query?query=checkout_orders_succeeded_total'
+→ 1
+$ curl 'http://localhost:9090/api/v1/query?query=checkout_discount_amount_dollars_total'
+→ 32.79   (= $32.79, exacto al ejemplo de la especificación)
+$ curl 'http://localhost:9090/api/v1/query?query=checkout_orders_failed_total'
+→ {reason="insufficient_stock"} 1
+$ curl 'http://localhost:9090/api/v1/query?query=frontend_telemetry_events_total'
+→ {event="discount_limit_alert_shown"} 1
+
+$ curl -u admin:admin http://localhost:3000/api/search
+→ "Core E-Commerce Checkout - Overview" /d/checkout-overview/core-e-commerce-checkout-overview
+```
+
+Prometheus scrapea el contenedor real (`backend:8080/metrics` vía red interna de Docker, no el puerto del host) y refleja el mismo estado que el backend expone; el dashboard de Grafana está auto-provisionado y accesible. Durante esta verificación se encontró y corrigió un bind mount de Grafana que había quedado obsoleto tras 11 horas de uptime del contenedor (se resolvió con `docker-compose down && up`) — el detalle completo está en `docs/ai-usage.md`, sección 8.
+
+### 4. Pipeline de CI (GitHub Actions)
+
+`.github/workflows/ci.yml` dispara en `pull_request` hacia `master`. **Aún no existe una corrida real en GitHub** (0 workflow runs vía API al momento de escribir esto) porque todavía no se ha abierto el Pull Request que lo dispare. Lo que sí está verificado:
+
+- Cada paso de ambos jobs (`gofmt`, `go vet`, `go test -race` con el mismo alcance de paquetes, el script de bash que calcula el % y falla bajo 80%, `npm ci`, `npm run test:coverage`, ambos `build`) se ejecutó localmente con los comandos **idénticos** a los del workflow — ver puntos 1 y 2 arriba.
+- El badge de GitHub Actions al inicio de este README se actualizará solo en cuanto exista la primera corrida real.
 
 ## Arquitectura y documentación
 
