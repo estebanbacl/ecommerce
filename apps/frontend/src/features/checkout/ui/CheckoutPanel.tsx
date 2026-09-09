@@ -1,6 +1,8 @@
 import { useState } from 'react'
 
 import type { CartItem } from '../../../types'
+import { sendTelemetryEvent } from '../../../services/telemetry/metricsService'
+import { LockKeyhole, ShoppingBag } from '../../../shared/ui/icons'
 import { useCheckout } from '../model/useCheckout'
 import { useQuote } from '../model/useQuote'
 import { CouponForm } from './CouponForm'
@@ -36,20 +38,30 @@ export function CheckoutPanel({
   }
 
   const stale = quote.isStale(items, couponCode)
+  const couponApplied = quote.state.status === 'success' && !stale && quote.state.data.coupon.status === 'APPLIED'
 
   return (
     <section
       aria-label="Confirmación de compra"
-      className="space-y-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+      className="space-y-5 rounded-2xl border border-stone-200 bg-white p-4 shadow-[0_28px_80px_-40px_rgba(28,25,23,0.45)] sm:p-5"
     >
-      <h2 className="text-lg font-semibold text-neutral-900">Cupón y desglose</h2>
+      <div className="flex items-center gap-3">
+        <span className="grid size-9 place-items-center rounded-xl bg-stone-950 text-white">
+          <ShoppingBag aria-hidden="true" size={16} />
+        </span>
+        <h2 className="text-lg font-black tracking-tight text-stone-950">Cupón y desglose</h2>
+      </div>
 
       <CouponForm
         value={couponCode}
         onChange={setCouponCode}
         disabled={!canCheckout || checkout.state.status === 'submitting'}
         loading={quote.state.status === 'loading'}
-        onApply={() => void quote.applyCoupon(items, couponCode)}
+        applied={couponApplied}
+        onApply={() => {
+          sendTelemetryEvent('coupon_apply_clicked')
+          void quote.applyCoupon(items, couponCode)
+        }}
       />
 
       {quote.state.status === 'error' && (
@@ -65,6 +77,7 @@ export function CheckoutPanel({
               El carrito cambió: vuelve a aplicar el cupón para ver el desglose vigente.
             </p>
           )}
+          <div className="h-px bg-stone-100" />
           <DiscountBreakdownView breakdown={quote.state.data.breakdown} coupon={quote.state.data.coupon} />
           <DiscountLimitAlert visible={quote.state.data.breakdown.limitApplied} />
         </>
@@ -81,10 +94,17 @@ export function CheckoutPanel({
         type="button"
         disabled={!canCheckout || checkout.state.status === 'submitting'}
         onClick={() => void checkout.checkout(items, couponCode)}
-        className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
+        className="group flex min-h-12 w-full items-center justify-between rounded-2xl bg-violet-600 px-5 py-3.5 text-sm font-bold text-white shadow-[0_16px_35px_-18px_rgba(109,40,217,0.8)] transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none"
       >
-        {checkout.state.status === 'submitting' ? 'Procesando…' : 'Confirmar compra'}
+        <span className="flex items-center gap-2">
+          <LockKeyhole aria-hidden="true" size={16} />
+          {checkout.state.status === 'submitting' ? 'Procesando…' : 'Confirmar compra'}
+        </span>
       </button>
+
+      <p className="text-center text-[0.68rem] leading-4 text-stone-400">
+        Pago simulado · Precios expresados en USD
+      </p>
     </section>
   )
 }

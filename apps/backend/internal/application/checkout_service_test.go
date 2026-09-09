@@ -18,16 +18,31 @@ type fixedIDGenerator struct{ id string }
 
 func (g fixedIDGenerator) NewID() string { return g.id }
 
+// fakeMetricsRecorder records calls so tests can assert business metrics
+// fire on the right outcomes without depending on a real Prometheus registry.
+type fakeMetricsRecorder struct {
+	succeeded []domain.Cents
+	failed    []string
+}
+
+func (f *fakeMetricsRecorder) RecordOrderSucceeded(discount domain.Cents) {
+	f.succeeded = append(f.succeeded, discount)
+}
+
+func (f *fakeMetricsRecorder) RecordOrderFailed(reason string) {
+	f.failed = append(f.failed, reason)
+}
+
 func newTestService() ports.CheckoutService {
 	repo := repositories.NewInMemoryOrderRepository(repositories.SeedProducts())
 	clock := fixedClock{now: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
-	return NewCheckoutService(repo, clock, fixedIDGenerator{id: "ord-test-1"})
+	return NewCheckoutService(repo, clock, fixedIDGenerator{id: "ord-test-1"}, &fakeMetricsRecorder{})
 }
 
 func TestQuoteCart_DoesNotMutateStock(t *testing.T) {
 	repo := repositories.NewInMemoryOrderRepository(repositories.SeedProducts())
 	clock := fixedClock{now: time.Now()}
-	service := NewCheckoutService(repo, clock, fixedIDGenerator{id: "ord-1"})
+	service := NewCheckoutService(repo, clock, fixedIDGenerator{id: "ord-1"}, &fakeMetricsRecorder{})
 
 	_, err := service.QuoteCart(context.Background(), ports.CheckoutCommand{
 		Items: []ports.CheckoutItem{{ProductID: "tech-001", Quantity: 5}},
@@ -111,5 +126,63 @@ func TestCheckout_SuccessfulOrderMatchesEngineOutput(t *testing.T) {
 	}
 	if result.Order.Coupon.Status != "APPLIED" {
 		t.Fatalf("expected coupon applied, got %s", result.Order.Coupon.Status)
+	}
+}
+
+func TestCheckout_RecordsSuccessMetricWithFinalSavings(t *testing.T) {
+	repo := repositories.NewInMemoryOrderRepository(repositories.SeedProducts())
+	clock := fixedClock{now: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+	metrics := &fakeMetricsRecorder{}
+	service := NewCheckoutService(repo, clock, fixedIDGenerator{id: "ord-1"}, metrics)
+
+	result, err := service.Checkout(context.Background(), ports.CheckoutCommand{
+		Items:      []ports.CheckoutItem{{ProductID: "tech-001", Quantity: 1}},
+		CouponCode: "welcome2026",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(metrics.succeeded) != 1 || metrics.succeeded[0] != result.Order.Breakdown.FinalSavings {
+		t.Fatalf("expected one success metric with discount %d, got %+v", result.Order.Breakdown.FinalSavings, metrics.succeeded)
+	}
+	if len(metrics.failed) != 0 {
+		t.Fatalf("expected no failure metrics, got %+v", metrics.failed)
+	}
+}
+
+func TestCheckout_RecordsFailureMetricOnInsufficientStock(t *testing.T) {
+	repo := repositories.NewInMemoryOrderRepository(repositories.SeedProducts())
+	clock := fixedClock{now: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+	metrics := &fakeMetricsRecorder{}
+	service := NewCheckoutService(repo, clock, fixedIDGenerator{id: "ord-1"}, metrics)
+
+	_, err := service.Checkout(context.Background(), ports.CheckoutCommand{
+		Items: []ports.CheckoutItem{{ProductID: "book-001", Quantity: 100}},
+	})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	if len(metrics.failed) != 1 || metrics.failed[0] != "insufficient_stock" {
+		t.Fatalf(`expected one "insufficient_stock" failure metric, got %+v`, metrics.failed)
+	}
+	if len(metrics.succeeded) != 0 {
+		t.Fatalf("expected no success metrics, got %+v", metrics.succeeded)
+	}
+}
+
+func TestCheckout_RecordsFailureMetricOnEmptyCart(t *testing.T) {
+	metrics := &fakeMetricsRecorder{}
+	repo := repositories.NewInMemoryOrderRepository(repositories.SeedProducts())
+	service := NewCheckoutService(repo, fixedClock{now: time.Now()}, fixedIDGenerator{id: "ord-1"}, metrics)
+
+	_, err := service.Checkout(context.Background(), ports.CheckoutCommand{})
+	if err != ErrEmptyCart {
+		t.Fatalf("expected ErrEmptyCart, got %v", err)
+	}
+
+	if len(metrics.failed) != 1 || metrics.failed[0] != "empty_cart" {
+		t.Fatalf(`expected one "empty_cart" failure metric, got %+v`, metrics.failed)
 	}
 }

@@ -4,7 +4,7 @@ import { CheckoutPage } from '../pages/checkout/CheckoutPage'
 export function App() {
   return (
     <CartProvider>
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen bg-stone-50">
         <CheckoutPage />
       </div>
     </CartProvider>

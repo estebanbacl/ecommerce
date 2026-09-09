@@ -19,6 +19,11 @@ describe('cartSelectors', () => {
     expect(selectOriginalSubtotal(state, products)).toBe(1000)
   })
 
+  it('ignores a cart line whose product is no longer in the catalog', () => {
+    const state = cartReducer(initialCartState, { type: 'itemAdded', productId: 'missing', knownStock: 5 })
+    expect(selectOriginalSubtotal(state, products)).toBe(0)
+  })
+
   it('sums across multiple products', () => {
     let state = cartReducer(initialCartState, { type: 'itemAdded', productId: 'p1', knownStock: 5 })
     state = cartReducer(state, { type: 'itemAdded', productId: 'p2', knownStock: 5 })
