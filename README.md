@@ -111,12 +111,21 @@ $ curl -u admin:admin http://localhost:3000/api/search
 
 Prometheus scrapea el contenedor real (`backend:8080/metrics` vía red interna de Docker, no el puerto del host) y refleja el mismo estado que el backend expone; el dashboard de Grafana está auto-provisionado y accesible. Durante esta verificación se encontró y corrigió un bind mount de Grafana que había quedado obsoleto tras 11 horas de uptime del contenedor (se resolvió con `docker-compose down && up`) — el detalle completo está en `docs/ai-usage.md`, sección 8.
 
-### 4. Pipeline de CI (GitHub Actions)
+### 4. Pipeline de CI (GitHub Actions) — corrida real, con un fallo genuino encontrado y corregido
 
-`.github/workflows/ci.yml` dispara en `pull_request` hacia `master`. **Aún no existe una corrida real en GitHub** (0 workflow runs vía API al momento de escribir esto) porque todavía no se ha abierto el Pull Request que lo dispare. Lo que sí está verificado:
+`.github/workflows/ci.yml` dispara en `pull_request` hacia `master`. La primera corrida real ([PR #1](https://github.com/estebanbacl/ecommerce/pull/1)) mostró: **backend `success`**, **frontend `failure`** (`Test Files no tests`, `Errors 9 errors`, cobertura 0% en las 4 métricas).
 
-- Cada paso de ambos jobs (`gofmt`, `go vet`, `go test -race` con el mismo alcance de paquetes, el script de bash que calcula el % y falla bajo 80%, `npm ci`, `npm run test:coverage`, ambos `build`) se ejecutó localmente con los comandos **idénticos** a los del workflow — ver puntos 1 y 2 arriba.
-- El badge de GitHub Actions al inicio de este README se actualizará solo en cuanto exista la primera corrida real.
+Diagnóstico sin `gh` CLI ni token de API disponibles en este entorno: se reprodujo el fallo localmente con Docker, ejecutando `apps/frontend` dentro de un contenedor `node:20-bookworm` (el mismo Node que pedía el job). Reprodujo idéntico:
+
+```text
+TypeError: webidl.util.markAsUncloneable is not a function
+  at new CacheStorage node_modules/undici/lib/web/cache/cachestorage.js
+  at jsdom/lib/api.js
+```
+
+`jsdom` 30 depende de una API interna de `undici` que **no existe en Node 20**, solo desde Node 22. Se confirmó la causa (no solo el síntoma) repitiendo la misma reproducción en `node:22-bookworm`: los mismos 39 tests, las mismas cifras de cobertura del punto 1, en verde — `npm run build` también limpio bajo Node 22 en Linux.
+
+**Corrección aplicada:** `node-version` en `ci.yml` pasó de `"20"` a `"22"` (con comentario explicando por qué, para que no se revierta sin contexto), y se actualizó el prerrequisito de Node en este README — el problema no era exclusivo de CI, cualquiera con Node 20 localmente tendría el mismo fallo. El detalle completo, incluyendo la hipótesis inicial que se investigó y se descartó por no ser la causa real, está en `docs/ai-usage.md`, sección 10.
 
 ## Arquitectura y documentación
 
@@ -132,7 +141,7 @@ Prometheus scrapea el contenedor real (`backend:8080/metrics` vía red interna d
 ## Requisitos previos
 
 - [Go 1.22+](https://go.dev/dl/)
-- [Node.js 20+](https://nodejs.org/) (incluye `npm`)
+- [Node.js 22+](https://nodejs.org/) (incluye `npm`) — Node 20 falla: `jsdom` 30 requiere una API de `undici` que no existe antes de Node 22
 - Git
 
 ### macOS
