@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 
 	"github.com/examen-ecommerce/backend/internal/core/domain"
 	"github.com/examen-ecommerce/backend/internal/core/ports"
@@ -9,20 +10,27 @@ import (
 )
 
 type checkoutService struct {
-	repo   ports.OrderRepository
-	engine pricing.Engine
-	clock  ports.Clock
-	ids    ports.IDGenerator
+	repo    ports.OrderRepository
+	engine  pricing.Engine
+	clock   ports.Clock
+	ids     ports.IDGenerator
+	metrics ports.MetricsRecorder
 }
 
 // NewCheckoutService builds a ports.CheckoutService, receiving every
 // dependency by constructor injection. No global state, no singletons.
-func NewCheckoutService(repo ports.OrderRepository, clock ports.Clock, ids ports.IDGenerator) ports.CheckoutService {
+func NewCheckoutService(
+	repo ports.OrderRepository,
+	clock ports.Clock,
+	ids ports.IDGenerator,
+	metrics ports.MetricsRecorder,
+) ports.CheckoutService {
 	return &checkoutService{
-		repo:   repo,
-		engine: pricing.NewEngine(),
-		clock:  clock,
-		ids:    ids,
+		repo:    repo,
+		engine:  pricing.NewEngine(),
+		clock:   clock,
+		ids:     ids,
+		metrics: metrics,
 	}
 }
 
@@ -46,11 +54,13 @@ func (s *checkoutService) QuoteCart(ctx context.Context, command ports.CheckoutC
 func (s *checkoutService) Checkout(ctx context.Context, command ports.CheckoutCommand) (ports.CheckoutResult, error) {
 	consolidated, err := consolidateAndValidate(command.Items)
 	if err != nil {
+		s.metrics.RecordOrderFailed(failureReason(err))
 		return ports.CheckoutResult{}, err
 	}
 
 	pricedItems, err := s.priceItems(ctx, consolidated)
 	if err != nil {
+		s.metrics.RecordOrderFailed(failureReason(err))
 		return ports.CheckoutResult{}, err
 	}
 
@@ -69,10 +79,33 @@ func (s *checkoutService) Checkout(ctx context.Context, command ports.CheckoutCo
 	// SaveOrderAndDecrementStock validates vigent stock and persists the
 	// order as a single atomic operation: either both succeed or neither does.
 	if err := s.repo.SaveOrderAndDecrementStock(ctx, order); err != nil {
+		s.metrics.RecordOrderFailed(failureReason(err))
 		return ports.CheckoutResult{}, err
 	}
 
+	s.metrics.RecordOrderSucceeded(breakdown.FinalSavings)
+
 	return ports.CheckoutResult{Order: order}, nil
+}
+
+// failureReason classifies a checkout error into a stable, low-cardinality
+// label suitable for a Prometheus counter. Business metrics must never be
+// labeled with raw error strings.
+func failureReason(err error) string {
+	var stockErr *ports.InsufficientStockError
+
+	switch {
+	case errors.Is(err, ErrEmptyCart):
+		return "empty_cart"
+	case errors.Is(err, ErrInvalidQuantity), errors.Is(err, ErrInvalidProductID):
+		return "invalid_request"
+	case errors.Is(err, ports.ErrProductNotFound):
+		return "product_not_found"
+	case errors.As(err, &stockErr):
+		return "insufficient_stock"
+	default:
+		return "internal_error"
+	}
 }
 
 func (s *checkoutService) priceItems(ctx context.Context, items []domain.RequestedItem) ([]domain.PricedItem, error) {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { CartItem } from '../../../types'
+import { sendTelemetryEvent } from '../../../services/telemetry/metricsService'
 import { LockKeyhole, ShoppingBag } from '../../../shared/ui/icons'
 import { useCheckout } from '../model/useCheckout'
 import { useQuote } from '../model/useQuote'
@@ -57,7 +58,10 @@ export function CheckoutPanel({
         disabled={!canCheckout || checkout.state.status === 'submitting'}
         loading={quote.state.status === 'loading'}
         applied={couponApplied}
-        onApply={() => void quote.applyCoupon(items, couponCode)}
+        onApply={() => {
+          sendTelemetryEvent('coupon_apply_clicked')
+          void quote.applyCoupon(items, couponCode)
+        }}
       />
 
       {quote.state.status === 'error' && (

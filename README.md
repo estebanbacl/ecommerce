@@ -9,6 +9,7 @@ MVP de checkout para e-commerce con descuentos acumulativos (categoría, volumen
 - [`go-chi/chi`](https://github.com/go-chi/chi) — enrutador HTTP
 - [`go.uber.org/zap`](https://github.com/uber-go/zap) — logging estructurado
 - [`kelseyhightower/envconfig`](https://github.com/kelseyhightower/envconfig) — configuración por variables de entorno
+- [`prometheus/client_golang`](https://github.com/prometheus/client_golang) — métricas técnicas y de negocio (`/metrics`)
 - Repositorio en memoria (sin base de datos externa en este MVP)
 - Patrones: Strategy + Chain of Responsibility (motor de descuentos), Repository, inyección de dependencias por constructor
 
@@ -18,6 +19,13 @@ MVP de checkout para e-commerce con descuentos acumulativos (categoría, volumen
 - [Zod](https://zod.dev/) — validación en runtime de las respuestas HTTP
 - [Vitest](https://vitest.dev/) + [Testing Library](https://testing-library.com/) — pruebas
 - Estado del carrito con `React Context` + `useReducer`
+- Telemetría propia (`src/services/telemetry`) hacia `POST /api/metrics` del backend
+
+**Observabilidad** (`infra/`) — stack local de monitoreo
+
+- [Prometheus](https://prometheus.io/) — scraping de métricas cada 5s
+- [Grafana](https://grafana.com/) — dashboards, con datasource y dashboard auto-provisionados
+- [Docker Compose](https://docs.docker.com/compose/) — orquestación local de los tres servicios
 
 ## Arquitectura y documentación
 
@@ -93,6 +101,69 @@ npm run dev
 ```
 
 Abre `http://localhost:5173`. El archivo `apps/frontend/.env.development` ya apunta a `http://localhost:8080`; ajusta `VITE_API_BASE_URL` si cambias el puerto del backend.
+
+## Observabilidad local (Prometheus + Grafana)
+
+El monorepo incluye un stack de observabilidad opcional (`docker-compose.yml` + `infra/`) para visualizar métricas técnicas y de negocio: órdenes exitosas/fallidas, monto de descuentos aplicados y eventos de telemetría del frontend (clic en "Aplicar cupón", alerta de límite del 35% mostrada).
+
+### Requisitos
+
+Necesitas un **daemon de Docker corriendo** y el comando de Compose. Dos rutas típicas en macOS:
+
+- **Docker Desktop** (incluye daemon + `docker compose`): `brew install --cask docker`, luego ábrelo una vez para que arranque.
+- **Colima** (sin GUI): `brew install colima docker docker-compose` y `colima start`. Con esta combinación el comando es `docker-compose` (con guion), no `docker compose`.
+
+En Windows, instala [Docker Desktop](https://www.docker.com/products/docker-desktop/) (incluye WSL2 y `docker compose`).
+
+Verifica que funciona:
+
+```bash
+docker compose version   # Docker Desktop
+# o
+docker-compose version   # Colima / instalación standalone
+```
+
+### Levantar el stack
+
+Desde la raíz del monorepo:
+
+```bash
+docker compose up --build      # Docker Desktop
+# o
+docker-compose up --build      # Colima / standalone
+```
+
+Esto construye la imagen del backend (`apps/backend/Dockerfile`) y levanta tres contenedores:
+
+| Servicio | URL | Descripción |
+|---|---|---|
+| `backend` | http://localhost:8080 | API Go, expone `GET /metrics` (Prometheus) y `POST /api/metrics` (telemetría del frontend) |
+| `prometheus` | http://localhost:9090 | Scrapea `backend:8080/metrics` cada 5s (`infra/prometheus/prometheus.yml`) |
+| `grafana` | http://localhost:3000 | Usuario `admin` / contraseña `admin`. Datasource y dashboard se auto-provisionan al iniciar |
+
+Para correrlo en segundo plano, agrega `-d`; para detenerlo, `docker compose down` (o `docker-compose down`).
+
+### Verificar que funciona
+
+```bash
+# El backend expone las métricas en formato Prometheus
+curl http://localhost:8080/metrics
+
+# El target "backend" debe aparecer como "up"
+curl http://localhost:9090/api/v1/targets
+```
+
+En Grafana (`http://localhost:3000`), el dashboard **"Core E-Commerce Checkout - Overview"** ya está cargado (`infra/grafana/dashboards/checkout-overview.json`) con paneles de tasa de éxito de órdenes, monto acumulado de descuentos, fallos por razón y eventos de telemetría del frontend. Genera unas cuantas compras desde `http://localhost:5173` (con el backend apuntando al del contenedor, o corriendo ambos stacks) para ver datos reales.
+
+### Métricas expuestas
+
+| Métrica | Tipo | Descripción |
+|---|---|---|
+| `checkout_orders_succeeded_total` | Counter | Órdenes confirmadas exitosamente |
+| `checkout_orders_failed_total{reason=...}` | Counter | Checkouts rechazados, por razón (`insufficient_stock`, `empty_cart`, etc.) |
+| `checkout_discount_amount_dollars_total` | Counter | Monto acumulado de descuentos aplicados, en dólares (auditoría financiera) |
+| `checkout_discount_amount_dollars` | Histogram | Distribución del descuento aplicado por orden |
+| `frontend_telemetry_events_total{event=...}` | Counter | Eventos reportados por el frontend (`coupon_apply_clicked`, `discount_limit_alert_shown`) |
 
 ## Pruebas
 
