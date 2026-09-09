@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { CartItem } from '../../../types'
+import { sendTelemetryEvent } from '../../../services/telemetry/metricsService'
 import { useCheckout } from '../model/useCheckout'
 import { useQuote } from '../model/useQuote'
 import { CouponForm } from './CouponForm'
@@ -49,7 +50,10 @@ export function CheckoutPanel({
         onChange={setCouponCode}
         disabled={!canCheckout || checkout.state.status === 'submitting'}
         loading={quote.state.status === 'loading'}
-        onApply={() => void quote.applyCoupon(items, couponCode)}
+        onApply={() => {
+          sendTelemetryEvent('coupon_apply_clicked')
+          void quote.applyCoupon(items, couponCode)
+        }}
       />
 
       {quote.state.status === 'error' && (

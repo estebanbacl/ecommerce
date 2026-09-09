@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/examen-ecommerce/backend/internal/adapters/handlers"
+	"github.com/examen-ecommerce/backend/internal/adapters/observability"
 	"github.com/examen-ecommerce/backend/internal/adapters/platform"
 	"github.com/examen-ecommerce/backend/internal/adapters/repositories"
 	"github.com/examen-ecommerce/backend/internal/application"
@@ -41,10 +42,13 @@ func main() {
 	}
 
 	repo := repositories.NewInMemoryOrderRepository(repositories.SeedProducts())
-	checkoutService := application.NewCheckoutService(repo, platform.SystemClock{}, platform.UUIDGenerator{})
+	metricsRecorder := observability.NewPrometheusMetricsRecorder()
+	checkoutService := application.NewCheckoutService(repo, platform.SystemClock{}, platform.UUIDGenerator{}, metricsRecorder)
 
 	checkoutHandler := handlers.NewCheckoutHandler(checkoutService, logger)
 	productsHandler := handlers.NewProductsHandler(repo, logger)
+	metricsHandler := handlers.NewMetricsHandler()
+	telemetryHandler := handlers.NewTelemetryHandler(logger)
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
@@ -54,6 +58,8 @@ func main() {
 
 	checkoutHandler.Routes(router)
 	productsHandler.Routes(router)
+	metricsHandler.Routes(router)
+	telemetryHandler.Routes(router)
 
 	server := &http.Server{
 		Addr:         ":" + cfg.HTTPPort,
