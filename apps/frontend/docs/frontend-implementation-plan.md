@@ -8,10 +8,10 @@
 | Aplicación | `apps/frontend` |
 | Stack | React + TypeScript + Vite |
 | Estrategia de estado | React Context + `useReducer` |
-| Especificación técnica | [`especificacion_frontend.md`](./especificacion_frontend.md) |
-| Plan backend | [`plan_implementacion_adaptadores.md`](../../backend/docs/plan_implementacion_adaptadores.md) |
-| Especificación de producto | [`especificacion_producto.md`](../../../docs/specs/especificacion_producto.md) |
-| Historias de usuario | [`historias_de_usuario.md`](../../../docs/specs/historias_de_usuario.md) |
+| Especificación técnica | [`frontend-specification.md`](./frontend-specification.md) |
+| Plan backend | [`adapters-implementation-plan.md`](../../backend/docs/adapters-implementation-plan.md) |
+| Especificación de producto | [`product-specification.md`](../../../docs/specs/product-specification.md) |
+| Historias de usuario | [`user-stories.md`](../../../docs/specs/user-stories.md) |
 
 ## 1. Objetivo
 

@@ -6,7 +6,7 @@
 |---|---|
 | Estado del documento | Revisado |
 | Fecha de revisión | 2026-09-08 |
-| Especificación de referencia | [`especificacion-producto.md`](./especificacion-producto.md) |
+| Especificación de referencia | [`product-specification.md`](./product-specification.md) |
 | Alcance | Madurez de la especificación, criterios de aceptación, dependencias y trabajo futuro |
 
 > Este documento evalúa la calidad y completitud de las historias como especificaciones. No representa avance de implementación y no presupone que las aplicaciones frontend o backend ya existan.

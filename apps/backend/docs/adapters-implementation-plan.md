@@ -9,9 +9,9 @@
 | Aplicación | `apps/backend` |
 | Lenguaje | Go |
 | Arquitectura | Hexagonal |
-| Especificación técnica | [`especificacion_backend.md`](./especificacion_backend.md) |
-| Especificación de producto | [`especificacion_producto.md`](../../../docs/specs/especificacion_producto.md) |
-| Historias de usuario | [`historias_de_usuario.md`](../../../docs/specs/historias_de_usuario.md) |
+| Especificación técnica | [`backend-specification.md`](./backend-specification.md) |
+| Especificación de producto | [`product-specification.md`](../../../docs/specs/product-specification.md) |
+| Historias de usuario | [`user-stories.md`](../../../docs/specs/user-stories.md) |
 
 ## 1. Objetivo
 
@@ -55,7 +55,7 @@ La Fase 2 no debe inventar estos contratos dentro de los adaptadores. Antes de i
 
 ## 3. Diferencias que deben resolverse
 
-El prompt de esta fase y `especificacion_backend.md` contienen decisiones distintas. Para esta fase se propone seguir literalmente el prompt donde sea necesario para la evaluación y dejar preparada la migración posterior.
+El prompt de esta fase y `backend-specification.md` contienen decisiones distintas. Para esta fase se propone seguir literalmente el prompt donde sea necesario para la evaluación y dejar preparada la migración posterior.
 
 | Tema | Prompt de Fase 2 | Especificación backend | Decisión propuesta para esta fase |
 |---|---|---|---|
@@ -703,7 +703,7 @@ La fase está terminada cuando:
 - [ ] `gofmt`, `go vet`, pruebas, race detector y build pasan.
 - [ ] Las capas lógicas esenciales alcanzan al menos 80% de cobertura.
 - [ ] README documenta el comando de arranque.
-- [ ] Las diferencias temporales con `especificacion_backend.md` están documentadas.
+- [ ] Las diferencias temporales con `backend-specification.md` están documentadas.
 
 ## 12. Comando de arranque esperado
 

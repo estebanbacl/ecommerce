@@ -9,8 +9,8 @@
 | Aplicación | `apps/backend` |
 | Lenguaje | Go |
 | Estilo arquitectónico | Monolito modular con puertos y adaptadores |
-| Especificación funcional | [`especificacion_producto.md`](../../../docs/specs/especificacion_producto.md) |
-| Historias de usuario | [`historias_de_usuario.md`](../../../docs/specs/historias_de_usuario.md) |
+| Especificación funcional | [`product-specification.md`](../../../docs/specs/product-specification.md) |
+| Historias de usuario | [`user-stories.md`](../../../docs/specs/user-stories.md) |
 
 ## 1. Propósito
 

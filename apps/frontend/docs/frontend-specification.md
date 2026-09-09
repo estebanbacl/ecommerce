@@ -9,9 +9,9 @@
 | Aplicación | `apps/frontend` |
 | Stack | React + TypeScript + Vite |
 | Estilo arquitectónico | Arquitectura por funcionalidades |
-| Especificación funcional | [`especificacion_producto.md`](../../../docs/specs/especificacion_producto.md) |
-| Historias de usuario | [`historias_de_usuario.md`](../../../docs/specs/historias_de_usuario.md) |
-| Contrato backend | [`especificacion_backend.md`](../../backend/docs/especificacion_backend.md) |
+| Especificación funcional | [`product-specification.md`](../../../docs/specs/product-specification.md) |
+| Historias de usuario | [`user-stories.md`](../../../docs/specs/user-stories.md) |
+| Contrato backend | [`backend-specification.md`](../../backend/docs/backend-specification.md) |
 
 ## 1. Propósito
 
@@ -661,7 +661,7 @@ Con MSW:
 
 ### 19.4 Contratos
 
-- Fixtures alineados con `especificacion_backend.md`.
+- Fixtures alineados con `backend-specification.md`.
 - Validadores runtime probados con respuestas válidas e inválidas.
 - Una prueba debe fallar si falta un campo obligatorio del desglose.
 
