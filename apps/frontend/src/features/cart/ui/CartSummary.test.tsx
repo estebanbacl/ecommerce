@@ -49,4 +49,25 @@ describe('CartSummary', () => {
 
     expect(screen.getByText('El carrito está vacío.')).toBeInTheDocument()
   })
+
+  it('increments the quantity via the stepper and disables it at known stock', async () => {
+    renderSummary()
+    await userEvent.click(screen.getByRole('button', { name: 'seed-add' }))
+
+    const increment = screen.getByRole('button', { name: 'Agregar una unidad de Teclado' })
+    for (let i = 0; i < 4; i += 1) {
+      await userEvent.click(increment)
+    }
+
+    expect(screen.getByText('Cantidad: 5')).toBeInTheDocument()
+    expect(increment).toBeDisabled()
+  })
+
+  it('decrements via the stepper, removing the line at zero', async () => {
+    renderSummary()
+    await userEvent.click(screen.getByRole('button', { name: 'seed-add' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Reducir cantidad de Teclado' }))
+
+    expect(screen.getByText('El carrito está vacío.')).toBeInTheDocument()
+  })
 })

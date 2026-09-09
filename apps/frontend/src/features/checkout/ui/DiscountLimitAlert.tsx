@@ -1,3 +1,5 @@
+import { PartyPopper, Sparkles } from '../../../shared/ui/icons'
+
 const LIMIT_MESSAGE = '¡Enhorabuena! Has alcanzado el límite máximo de ahorro permitido (35%)'
 
 export function DiscountLimitAlert({ visible }: { visible: boolean }) {
@@ -8,10 +10,18 @@ export function DiscountLimitAlert({ visible }: { visible: boolean }) {
   return (
     <div
       role="status"
-      className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-800"
+      className="flex items-start gap-3 rounded-2xl border border-emerald-300/80 bg-emerald-50 px-4 py-4 text-emerald-950 shadow-[0_14px_35px_-24px_rgba(5,150,105,0.8)]"
     >
-      <span aria-hidden="true">🎉</span>
-      <span>{LIMIT_MESSAGE}</span>
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white shadow-sm">
+        <PartyPopper aria-hidden="true" size={20} strokeWidth={2} />
+      </span>
+      <div>
+        <div className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">
+          <Sparkles aria-hidden="true" size={13} />
+          Ahorro máximo
+        </div>
+        <p className="text-sm font-semibold leading-5">{LIMIT_MESSAGE}</p>
+      </div>
     </div>
   )
 }
