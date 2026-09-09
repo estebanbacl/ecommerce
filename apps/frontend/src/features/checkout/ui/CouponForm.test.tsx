@@ -18,4 +18,13 @@ describe('CouponForm', () => {
     render(<CouponForm value="" onChange={() => {}} disabled={false} loading onApply={() => {}} />)
     expect(screen.getByRole('button', { name: 'Aplicando…' })).toBeDisabled()
   })
+
+  it('reports each keystroke via onChange', async () => {
+    const onChange = vi.fn()
+    render(<CouponForm value="" onChange={onChange} disabled={false} loading={false} onApply={() => {}} />)
+
+    await userEvent.type(screen.getByLabelText('Código de cupón'), 'W')
+
+    expect(onChange).toHaveBeenCalledWith('W')
+  })
 })

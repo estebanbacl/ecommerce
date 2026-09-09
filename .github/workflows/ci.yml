@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/backend/go.mod
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify formatting
+        run: |
+          UNFORMATTED="$(gofmt -l .)"
+          if [ -n "$UNFORMATTED" ]; then
+            echo "The following files are not gofmt-formatted:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with coverage
+        # Scoped to the packages that hold real business logic (pricing
+        # engine, checkout use case, domain, in-memory repository, HTTP
+        # handlers, metrics adapter). cmd/server is a composition root
+        # (its main() blocks on OS signals and isn't unit-testable) and
+        # is intentionally excluded, matching backend-specification.md's
+        # own priority ("handlers triviales pueden tener menor prioridad
+        # que motor, stock y atomicidad").
+        run: |
+          go test -race -coverprofile=coverage.out \
+            ./internal/pricing/... \
+            ./internal/application/... \
+            ./internal/core/... \
+            ./internal/adapters/repositories/... \
+            ./internal/adapters/handlers/... \
+            ./internal/adapters/observability/...
+
+      - name: Enforce 80% minimum coverage
+        run: |
+          COVERAGE="$(go tool cover -func=coverage.out | grep '^total:' | awk '{print $NF}' | tr -d '%')"
+          echo "Total coverage (core packages): ${COVERAGE}%"
+
+          BELOW_THRESHOLD="$(awk -v cov="$COVERAGE" 'BEGIN { print (cov < 80) ? "1" : "0" }')"
+          if [ "$BELOW_THRESHOLD" = "1" ]; then
+            echo "❌ Coverage ${COVERAGE}% is below the required 80% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage ${COVERAGE}% meets the 80% threshold"
+
+      - name: Build
+        run: go build -o /tmp/server ./cmd/server
+
+  frontend:
+    name: Frontend (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test with coverage
+        # Coverage thresholds (80% statements/branches/functions/lines)
+        # are enforced by Vitest itself via vite.config.ts's
+        # test.coverage.thresholds — this command fails non-zero on its
+        # own if any metric drops below 80%. VITE_API_BASE_URL comes from
+        # apps/frontend/.env.test, which Vite loads automatically in test mode.
+        run: npm run test:coverage
+
+      - name: Typecheck and build
+        run: npm run build

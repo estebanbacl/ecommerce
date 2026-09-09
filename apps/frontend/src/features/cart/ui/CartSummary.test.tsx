@@ -49,4 +49,12 @@ describe('CartSummary', () => {
 
     expect(screen.getByText('El carrito está vacío.')).toBeInTheDocument()
   })
+
+  it('decrements the quantity via the reduce action, removing the line at zero', async () => {
+    renderSummary()
+    await userEvent.click(screen.getByRole('button', { name: 'seed-add' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Reducir cantidad de Teclado' }))
+
+    expect(screen.getByText('El carrito está vacío.')).toBeInTheDocument()
+  })
 })
